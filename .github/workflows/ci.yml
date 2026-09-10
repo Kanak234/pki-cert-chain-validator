@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (Java 21 LTS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compile and run test suite
+        run: mvn clean test
+
+      - name: Package standalone executable JAR
+        run: mvn package -DskipTests
+
+      - name: Test CLI execution
+        run: |
+          java -jar target/pki-cert-chain-validator-1.0.0.jar --help
