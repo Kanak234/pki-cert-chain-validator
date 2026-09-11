@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, prod-hardening ]
   pull_request:
     branches: [ master, main ]
 
@@ -22,12 +22,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Compile and run test suite
-        run: mvn clean test
-
-      - name: Package standalone executable JAR
-        run: mvn package -DskipTests
+      - name: Compile and Run Test Suite
+        run: mvn clean verify --batch-mode
 
       - name: Test CLI execution
-        run: |
-          java -jar target/pki-cert-chain-validator-1.0.0.jar --help
+        run: java -jar target/pki-cert-chain-validator-1.0.0.jar --help
