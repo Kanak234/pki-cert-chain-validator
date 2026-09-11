@@ -37,8 +37,19 @@ public final class ValidatorCli {
         boolean allowSelfSigned = hasOption(args, "--allow-self-signed");
         boolean jsonOutput = hasOption(args, "--json", "-j");
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.flush();
+            System.err.flush();
+        }));
+
         if (certPath == null) {
             System.err.println("Error: Missing required argument --cert <file>");
+            System.exit(2);
+        }
+
+        Path certFilePath = Paths.get(certPath);
+        if (!Files.exists(certFilePath)) {
+            System.err.println("Error: Leaf certificate file does not exist: " + certPath);
             System.exit(2);
         }
 
@@ -47,11 +58,21 @@ public final class ValidatorCli {
             certList.addAll(loadCertificates(certPath));
 
             if (chainPath != null) {
+                Path chainFilePath = Paths.get(chainPath);
+                if (!Files.exists(chainFilePath)) {
+                    System.err.println("Error: Certificate chain file does not exist: " + chainPath);
+                    System.exit(2);
+                }
                 certList.addAll(loadCertificates(chainPath));
             }
 
             TrustStore trustStore = new TrustStore();
             if (trustStorePath != null) {
+                Path tsFilePath = Paths.get(trustStorePath);
+                if (!Files.exists(tsFilePath)) {
+                    System.err.println("Error: Trust store file does not exist: " + trustStorePath);
+                    System.exit(2);
+                }
                 trustStore.addAll(loadCertificates(trustStorePath));
             }
 
@@ -61,8 +82,27 @@ public final class ValidatorCli {
                 String oid = resolvePurposeOid(purpose);
                 ctxBuilder.requireKeyPurpose(oid);
             }
-            if (timeStr != null) ctxBuilder.validationTime(Instant.parse(timeStr));
-            if (maxPathStr != null) ctxBuilder.maxPathLength(Integer.parseInt(maxPathStr));
+            if (timeStr != null) {
+                try {
+                    ctxBuilder.validationTime(Instant.parse(timeStr));
+                } catch (Exception e) {
+                    System.err.println("Error: Invalid ISO-8601 format for --time: " + timeStr);
+                    System.exit(2);
+                }
+            }
+            if (maxPathStr != null) {
+                try {
+                    int maxLen = Integer.parseInt(maxPathStr);
+                    if (maxLen < 0) {
+                        System.err.println("Error: --max-path-len must be non-negative: " + maxPathStr);
+                        System.exit(2);
+                    }
+                    ctxBuilder.maxPathLength(maxLen);
+                } catch (NumberFormatException e) {
+                    System.err.println("Error: Invalid integer for --max-path-len: " + maxPathStr);
+                    System.exit(2);
+                }
+            }
             ctxBuilder.allowSelfSignedLeaf(allowSelfSigned);
 
             ValidationContext context = ctxBuilder.build();
