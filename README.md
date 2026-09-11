@@ -50,7 +50,7 @@ flowchart TD
 
 ## Measured Performance Benchmarks
 
-The benchmark was executed locally on this host using `BenchmarkTest` validating complete 3-tier PKI paths (Root CA $\to$ Intermediate CA $\to$ Leaf) with full RSA-2048 cryptographic signature verifications, extension checking, and SAN matching:
+The benchmark was executed locally using `BenchmarkTest` validating complete 3-tier PKI paths (Root CA $\to$ Intermediate CA $\to$ Leaf) with full RSA-2048 cryptographic signature verifications, extension checking, and SAN matching:
 
 ```text
 === PKI Validation Performance Benchmark ===
@@ -61,10 +61,29 @@ Mean Latency:    109.19 us/chain (0.109 ms)
 ============================================
 ```
 
+### Benchmark Environment & Reproducibility
+- **Processor:** AMD Ryzen 5 5600H with Radeon Graphics (6 cores / 12 threads @ 3.30 GHz)
+- **OS / Kernel:** Linux 7.0.0-31-generic x86_64
+- **JVM Runtime:** OpenJDK 64-Bit Server VM (build 21.0.8+7-Ubuntu-1ubuntu124.04, mixed mode)
+- **Baseline Git Commit:** `44902f1`
+- **Reproduction Command:**
+  ```bash
+  mvn test -Dtest=BenchmarkTest
+  ```
+
 ### Key Performance Characteristics
 - **Zero Runtime Dependencies:** Built strictly against standard `java.base`.
 - **Zero Garbage Collection Pressure:** Uses slice offsets and non-allocating ASN.1 traversals where possible.
 - **Microsecond Latency:** Complete 3-tier validation (including two RSA-2048 SHA-256 signature verifications) takes just **109 microseconds**.
+
+---
+
+## Limitations & Engineering Trade-Offs
+
+- **Online Revocation (OCSP / CRL):** Online revocation protocols (OCSP per RFC 6960 and CRL distribution points per RFC 5280 §4.2.1.13) require asynchronous network I/O and external responder infrastructure. They are deliberately omitted from the core path validator to preserve microsecond deterministic execution and zero-dependency guarantees.
+- **Supported Cryptographic Primitives:** Core support is optimized for RSA (`SHA256withRSA`, `SHA384withRSA`, `SHA512withRSA`) and ECDSA (`SHA256withECDSA`). RSA-PSS and Edwards-curve algorithms (`Ed25519`) are slated for future releases.
+- **Strict DER vs. Permissive BER/CER:** The ASN.1 decoder adheres strictly to ITU-T X.690 §10 (DER), requiring definite-length encoding and minimal octet representations. Non-canonical BER encodings (such as indefinite lengths or superfluous leading zeros) are strictly rejected for cryptographic safety, which may reject malformed legacy certificates.
+- **Complex Policy Trees:** Advanced RFC 5280 §4.2.1.10 policy mappings and arbitrary qualifier processing are evaluated in basic mode; full hierarchical qualifier tree validation is not implemented.
 
 ---
 
