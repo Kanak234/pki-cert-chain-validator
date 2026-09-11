@@ -24,7 +24,7 @@ public final class ValidatorCli {
     public static void main(String[] args) {
         if (args.length == 0 || hasOption(args, "-h", "--help")) {
             printHelp();
-            System.exit(0);
+            return;
         }
 
         String certPath = getOption(args, "--cert");
