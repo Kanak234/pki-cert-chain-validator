@@ -27,3 +27,9 @@ jobs:
 
       - name: Test CLI execution
         run: java -jar target/pki-cert-chain-validator-1.0.0.jar --help
+
+      - name: Build Docker Image
+        run: docker build -t pki-cert-chain-validator:test .
+
+      - name: Docker Smoke Test
+        run: docker run --rm pki-cert-chain-validator:test --help
